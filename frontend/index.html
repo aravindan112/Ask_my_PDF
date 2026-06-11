@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Q&A</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #080b12;
+            color: #c9d1d9;
+            min-height: 100vh;
+        }
+
+        /* TOP NAV */
+        nav {
+            border-bottom: 1px solid #161b22;
+            padding: 16px 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: sticky;
+            top: 0;
+            background: #080b12;
+            z-index: 100;
+        }
+
+        nav .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            color: #58a6ff;
+            font-weight: 500;
+        }
+
+        nav .badge {
+            background: #161b22;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* MAIN LAYOUT */
+        .layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            height: calc(100vh - 53px);
+        }
+
+        /* LEFT SIDEBAR */
+        .sidebar {
+            border-right: 1px solid #161b22;
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #484f58;
+            font-weight: 600;
+        }
+
+        /* UPLOAD ZONE */
+        .upload-zone {
+            border: 1px dashed #30363d;
+            border-radius: 10px;
+            padding: 28px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            border-color: #58a6ff;
+            background: #0d1117;
+        }
+
+        .upload-zone.dragging {
+            border-color: #58a6ff;
+            background: #0d1520;
+        }
+
+        .upload-zone.uploaded {
+            border-color: #3fb950;
+            border-style: solid;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .upload-zone p {
+            font-size: 0.85rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .upload-zone span {
+            font-size: 0.75rem;
+            color: #484f58;
+        }
+
+        input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* STATUS */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: #8b949e;
+            min-height: 20px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #484f58;
+            flex-shrink: 0;
+        }
+
+        .status-dot.green { background: #3fb950; }
+        .status-dot.blue { background: #58a6ff; animation: pulse 1.2s infinite; }
+        .status-dot.red { background: #f85149; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* CHUNKS PANEL */
+        .chunks-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chunk-pill {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.75rem;
+            color: #8b949e;
+            line-height: 1.6;
+            font-family: 'JetBrains Mono', monospace;
+            max-height: 80px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chunk-pill::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 24px;
+            background: linear-gradient(transparent, #0d1117);
+        }
+
+        .chunk-number {
+            font-size: 0.65rem;
+            color: #58a6ff;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        /* RIGHT PANEL — CHAT */
+        .chat-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            margin: auto;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .empty-state .big-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h2 {
+            font-size: 1.3rem;
+            color: #e6edf3;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .empty-state p {
+            font-size: 0.9rem;
+            color: #484f58;
+            line-height: 1.7;
+        }
+
+        /* MESSAGE BUBBLES */
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 780px;
+        }
+
+        .message.user { align-items: flex-end; align-self: flex-end; }
+        .message.assistant { align-items: flex-start; align-self: flex-start; }
+
+        .message-label {
+            font-size: 0.7rem;
+            color: #484f58;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .message-bubble {
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.75;
+        }
+
+        .message.user .message-bubble {
+            background: #1f3a5f;
+            border: 1px solid #2d5a8e;
+            color: #cae4ff;
+            border-bottom-right-radius: 3px;
+        }
+
+        .message.assistant .message-bubble {
+            background: #161b22;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            border-bottom-left-radius: 3px;
+        }
+
+        /* THINKING INDICATOR */
+        .thinking {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 14px 18px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            border-bottom-left-radius: 3px;
+            font-size: 0.85rem;
+            color: #58a6ff;
+        }
+
+        .thinking-dots span {
+            display: inline-block;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #58a6ff;
+            animation: bounce 1.2s infinite;
+            margin: 0 1px;
+        }
+
+        .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            border-top: 1px solid #161b22;
+            padding: 20px 40px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            display: flex;
+            align-items: flex-end;
+            padding: 10px 14px;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #58a6ff;
+        }
+
+        textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #e6edf3;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            resize: none;
+            max-height: 120px;
+            line-height: 1.6;
+        }
+
+        .send-btn {
+            background: #58a6ff;
+            border: none;
+            border-radius: 8px;
+            width: 38px;
+            height: 38px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .send-btn:hover { background: #79b8ff; }
+        .send-btn:disabled { background: #21262d; cursor: not-allowed; }
+
+        .send-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: #080b12;
+        }
+
+        .send-btn:disabled svg { fill: #484f58; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <span class="logo">pdf.qa</span>
+    <span class="badge">RAG</span>
+</nav>
+
+<div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div>
+            <p class="sidebar-title">Document</p>
+        </div>
+
+        <!-- Upload zone — clicking or dragging a PDF triggers auto upload -->
+        <div class="upload-zone" id="upload-zone">
+            <input type="file" id="pdf-input" accept=".pdf" onchange="handleFileSelect(event)" />
+            <div class="upload-icon">📄</div>
+            <p>Drop your PDF here</p>
+            <span>or click to browse</span>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">No document loaded</span>
+        </div>
+
+        <!-- Source chunks appear here after upload -->
+        <div id="chunks-section" style="display:none;">
+            <p class="sidebar-title" style="margin-bottom:12px;">Source Chunks</p>
+            <div class="chunks-panel" id="chunks-panel"></div>
+        </div>
+    </aside>
+
+    <!-- CHAT PANEL -->
+    <main class="chat-panel">
+        <div class="chat-messages" id="chat-messages">
+            <div class="empty-state" id="empty-state">
+                <div class="big-icon">💬</div>
+                <h2>Ask anything about your PDF</h2>
+                <p>Upload a document on the left, then start asking questions. The AI will read and understand it for you.</p>
+            </div>
+        </div>
+
+        <div class="input-bar">
+            <div class="input-wrapper">
+                <textarea
+                    id="question-input"
+                    placeholder="Ask a question about your document..."
+                    rows="1"
+                    onkeydown="handleKey(event)"
+                    oninput="autoResize(this)"
+                ></textarea>
+            </div>
+            <button class="send-btn" id="send-btn" onclick="askQuestion()" disabled>
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+            </button>
+        </div>
+    </main>
+
+</div>
+
+<script>
+    const BASE_URL = "";
+    // Empty string because FastAPI now serves the frontend
+    // so all fetch calls are relative to the same origin — no CORS issues
+
+    let pdfReady = false;
+
+    function setStatus(type, text) {
+        const dot = document.getElementById("status-dot");
+        const statusText = document.getElementById("status-text");
+        dot.className = "status-dot " + type;
+        statusText.textContent = text;
+    }
+
+    function autoResize(el) {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+    }
+
+    function handleKey(e) {
+        // Submit on Enter, allow Shift+Enter for new lines
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            askQuestion();
+        }
+    }
+
+    async function handleFileSelect(event) {
+        // Auto-upload as soon as a file is selected — no button needed
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const zone = document.getElementById("upload-zone");
+        setStatus("blue", `Indexing ${file.name}...`);
+        zone.classList.remove("uploaded");
+
+        const formData = new FormData();
+        formData.append("file", file);
+        // FormData packages the file for multipart HTTP upload
+
+        try {
+            const res = await fetch(`${BASE_URL}/upload`, {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+
+            setStatus("green", data.message);
+            zone.classList.add("uploaded");
+            pdfReady = true;
+            document.getElementById("send-btn").disabled = false;
+            // Enable the send button only after PDF is indexed
+
+        } catch (err) {
+            setStatus("red", "Upload failed. Is the server running?");
+        }
+    }
+
+    function appendMessage(role, content) {
+        // Remove empty state on first message
+        const emptyState = document.getElementById("empty-state");
+        if (emptyState) emptyState.remove();
+
+        const container = document.getElementById("chat-messages");
+
+        const msg = document.createElement("div");
+        msg.className = `message ${role}`;
+        msg.innerHTML = `
+            <span class="message-label">${role === "user" ? "You" : "Assistant"}</span>
+            <div class="message-bubble">${content}</div>
+        `;
+        container.appendChild(msg);
+        container.scrollTop = container.scrollHeight;
+        // Auto scroll to latest message
+        return msg;
+    }
+
+    function appendThinking() {
+        const emptyState = document.getElementById("empty-state");
+        if (emptyState) emptyState.remove();
+
+        const container = document.getElementById("chat-messages");
+        const msg = document.createElement("div");
+        msg.className = "message assistant";
+        msg.id = "thinking-msg";
+        msg.innerHTML = `
+            <span class="message-label">Assistant</span>
+            <div class="thinking">
+                Reading document
+                <div class="thinking-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        `;
+        container.appendChild(msg);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function updateChunksSidebar(chunks) {
+        // After each query, update the sidebar to show which chunks were used
+        const section = document.getElementById("chunks-section");
+        const panel = document.getElementById("chunks-panel");
+        section.style.display = "block";
+        panel.innerHTML = chunks.map((chunk, i) => `
+            <div class="chunk-pill">
+                <div class="chunk-number">Chunk ${i + 1}</div>
+                ${chunk}
+            </div>
+        `).join("");
+    }
+
+    async function askQuestion() {
+        const input = document.getElementById("question-input");
+        const question = input.value.trim();
+        if (!question || !pdfReady) return;
+
+        input.value = "";
+        input.style.height = "auto";
+        document.getElementById("send-btn").disabled = true;
+
+        appendMessage("user", question);
+        appendThinking();
+        // Show animated thinking indicator while waiting for API response
+
+        try {
+            const res = await fetch(`${BASE_URL}/ask`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question })
+            });
+
+            const data = await res.json();
+
+            document.getElementById("thinking-msg").remove();
+            // Remove thinking indicator and replace with actual answer
+
+            appendMessage("assistant", data.answer);
+            updateChunksSidebar(data.context);
+
+        } catch (err) {
+            document.getElementById("thinking-msg")?.remove();
+            appendMessage("assistant", "Error connecting to backend.");
+        }
+
+        document.getElementById("send-btn").disabled = false;
+        document.getElementById("question-input").focus();
+    }
+</script>
+</body>
+</html>

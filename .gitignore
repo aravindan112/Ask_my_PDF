@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables - never upload this
+.env
+
+# FAISS / model cache
+*.index
+*.pkl
+
+# VS Code / editor
+.vscode/
+.antigravity/
+
+# OS
+.DS_Store
+Thumbs.db
