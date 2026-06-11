@@ -1,4 +1,4 @@
-# pdf.qa — Local PDF Q&A RAG App
+# Ask my PDF — Local PDF Q&A RAG App
 
 A fully local, privacy-friendly PDF question-answering app built with **FastAPI**, **FAISS**, **Sentence Transformers**, and **Ollama**. Upload any PDF and ask questions about it in plain English — no cloud APIs, no data leaving your machine.
 
